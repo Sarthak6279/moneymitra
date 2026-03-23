@@ -5,6 +5,7 @@ import pandas as pd
 from datetime import datetime
 import base64
 from io import BytesIO
+from anthropic import Anthropic
 
 # Session state for landing page
 if 'show_app' not in st.session_state:
