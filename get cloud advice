@@ -6,7 +6,7 @@ import pandas as pd
 from datetime import datetime
 import base64
 from io import BytesIO
-import anthropic
+from groq import Groq
 
 # 1. PAGE CONFIGURATION
 st.set_page_config(
@@ -17,13 +17,49 @@ st.set_page_config(
 )
 
 # 2. ANTHROPIC AI INTEGRATION
-def get_claude_advice(income, expenses, savings_rate, emergency_months, debt_burden, investment_ratio, score):
-    """Fetches personalized financial advice from Claude API."""
+def get_claude_advice(income, expenses, savings, emergency_months,
+                      debt_burden, investment_ratio, score, age=30):
     try:
-        if "ANTHROPIC_API_KEY" not in st.secrets:
-            return "⚠️ API Key missing. Please add ANTHROPIC_API_KEY to Streamlit Secrets."
-        
-        client = anthropic.Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+        prompt = f"""You are MoneyMitra, an expert AI personal financial advisor for India.
+
+User financial profile:
+- Age: {age} years
+- Monthly Income: ₹{income:,.0f}
+- Monthly Expenses: ₹{expenses:,.0f}
+- Monthly Savings: ₹{savings:,.0f}
+- Emergency Fund: {emergency_months:.1f} months
+- Debt Burden: {debt_burden:.2f}x annual income
+- Investment Ratio: {investment_ratio:.1f}% of income
+- Money Health Score: {score:.1f}/100
+
+Give exactly 5 specific personalised recommendations.
+Each must include their exact rupee amounts and exact timelines.
+Use Indian products: SIP, PPF, NPS, ELSS, liquid funds.
+Be specific to their numbers. No generic advice."""
+
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"⚠️ AI advisor temporarily unavailable. Please refresh. (Error: {str(e)})"
+```
+
+---
+
+## Change 3 — Update requirements.txt
+
+Replace contents with:
+```
+streamlit>=1.28.0
+groq>=0.4.0
+plotly>=5.18.0
+pandas>=1.5.0
         
         prompt = f"""You are 'MoneyMitra', an expert Indian Financial Advisor. 
         Analyze these financial metrics for an Indian user (values in INR):
