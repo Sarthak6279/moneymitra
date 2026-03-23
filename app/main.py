@@ -191,7 +191,8 @@ if income > 0:
                     )
 
             response_text = message.content[0].text
-                advice_list = [line.strip() for line in response_text.split('\n') if line.strip() and not line.strip().startswith('-')]
+                advice_list = [line.strip() for line in response_text.split('
+') if line.strip() and not line.strip().startswith('-')]
                 return advice_list if advice_list else [response_text]
             except Exception as e:
                 return [f"⚡ AI insights temporarily unavailable. Error: {str(e)[:50]}"]
