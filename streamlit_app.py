@@ -1,11 +1,9 @@
-# This file is a wrapper for Streamlit Cloud deployment
-# The actual app code is in app/main.py
-
+import runpy
 import sys
 from pathlib import Path
 
-# Add the app directory to the Python path
-sys.path.insert(0, str(Path(__file__).parent / "app"))
+# Get the path to app/main.py
+app_file = Path(__file__).parent / "app" / "main.py"
 
-# Import and run the main app
-from main import *
+# Run the app
+runpy.run_path(str(app_file), run_name="__main__")
