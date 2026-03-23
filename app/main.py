@@ -5,7 +5,6 @@ import pandas as pd
 from datetime import datetime
 import base64
 from io import BytesIO
-from anthropic import Anthropic
 
 # Session state for landing page
 if 'show_app' not in st.session_state:
@@ -173,29 +172,35 @@ if income > 0:
     
     # Simulated Claude AI advice (production would use actual API)
     def generate_ai_advice(score, savings_rate, debt_burden, emergency_months):
-
-        try:
-                    client = Anthropic(api_key=st.secrets["ANTHROPIC_API_KEY"])
-                    prompt = f"""Analyze this financial data and provide 3-5 personalized insights:
-                    - Money Health Score: {score:.1f}/100
-                    - Savings Rate: {savings_rate:.1f}%
-                    - Debt Burden: {debt_burden:.2f}x annual income
-                    - Emergency Fund: {emergency_months:.1f} months
-
-                    Provide actionable financial advice in bullet points, each starting with an emoji."""
-
-            message = client.messages.create(
-                        model="claude-3-5-sonnet-20241022",
-                        max_tokens=500,
-                        messages=[{"role": "user", "content": prompt}]
-                    )
-
-            response_text = message.content[0].text
-                advice_list = [line.strip() for line in response_text.split('
-') if line.strip() and not line.strip().startswith('-')]
-                return advice_list if advice_list else [response_text]
-            except Exception as e:
-                return [f"⚡ AI insights temporarily unavailable. Error: {str(e)[:50]}"]
+        advice = []
+        
+        if score < 40:
+            advice.append("🚨 **Critical Priority**: Your financial health needs immediate attention.")
+        elif score < 70:
+            advice.append("⚡ **Action Needed**: You're on the right track but there's room for improvement.")
+        else:
+            advice.append("✨ **Excellent**: You're managing your finances wisely!")
+        
+        if savings_rate < 10:
+            advice.append(f"💸 **Increase Savings**: You're saving only {savings_rate:.1f}%. Try the 50-30-20 rule: 50% needs, 30% wants, 20% savings.")
+        elif savings_rate < 20:
+            advice.append(f"📈 **Good Progress**: Saving {savings_rate:.1f}% is good. Push towards 20-30% for financial freedom.")
+        
+        if emergency_months < 3:
+            advice.append(f"⚠️ **Build Emergency Fund**: You have only {emergency_months:.1f} months covered. Aim for 6-12 months of expenses ({expenses*6:.0f} - {expenses*12:.0f} ₹).")
+        elif emergency_months < 6:
+            advice.append(f"👍 **Almost There**: {emergency_months:.1f} months is solid. Push to 6+ months for complete security.")
+        
+        if debt_burden > 3:
+            advice.append(f"❌ **Debt Alert**: Your debt is {debt_burden:.1f}x your annual income. Consider debt consolidation or aggressive payoff strategy.")
+        elif debt_burden > 2:
+            advice.append(f"⚠️ **Manage Debt**: Debt burden at {debt_burden:.1f}x. Focus on paying down high-interest debt first.")
+        
+        if investment_ratio < 5:
+            advice.append("📉 **Start Investing**: Begin with 10% of income in low-cost index funds or SIPs. Time in market beats timing the market!")
+        
+        return advice
+    
     ai_advice = generate_ai_advice(money_health_score, savings_rate, debt_burden, emergency_fund_months)
     
     for i, tip in enumerate(ai_advice, 1):
