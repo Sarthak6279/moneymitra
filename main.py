@@ -1,0 +1,228 @@
+"""MoneyMitra - AI-Powered Financial Wellness Companion (ET AI Hackathon)."""
+import streamlit as st
+import plotly.graph_objects as go
+from groq import Groq
+
+
+# 1. PAGE CONFIGURATION
+st.set_page_config(
+    page_title="MoneyMitra - AI Money Mentor",
+    page_icon="💰",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+
+
+# 2. GROQ AI INTEGRATION
+def get_claude_advice(
+    income,
+    expenses,
+    savings,
+    emergency_months,
+    debt_burden,
+    investment_ratio,
+    score,
+    age=30,
+):
+    try:
+        client = Groq(api_key=st.secrets["GROQ_API_KEY"])
+
+        prompt = f"""You are MoneyMitra, an expert AI personal financial advisor for India.
+
+User financial profile:
+- Age: {age} years
+- Monthly Income: ₹{income:,.0f}
+- Monthly Expenses: ₹{expenses:,.0f}
+- Monthly Savings: ₹{savings:,.0f}
+- Emergency Fund: {emergency_months:.1f} months
+- Debt Burden: {debt_burden:.2f}x annual income
+- Investment Ratio: {investment_ratio:.1f}% of income
+- Money Health Score: {score:.1f}/100
+
+Give exactly 5 specific personalised recommendations.
+Each must include their exact rupee amounts and exact timelines.
+Use Indian products: SIP, PPF, NPS, ELSS, liquid funds.
+Be specific to their numbers. No generic advice."""
+
+        response = client.chat.completions.create(
+            model="llama3-8b-8192",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=1000,
+        )
+        return response.choices[0].message.content
+
+    except Exception as e:
+        return f"⚠️ AI advisor temporarily unavailable. Please refresh. (Error: {str(e)})"
+
+
+# 3. CORE CALCULATION LOGIC
+def calculate_financial_metrics(income, expenses, savings, debt, investments, emergency_fund):
+    savings_rate = (savings / income * 100) if income > 0 else 0
+    debt_burden = (debt / income * 100) if income > 0 else 0
+    investment_ratio = (investments / income * 100) if income > 0 else 0
+    emergency_months = (emergency_fund / expenses) if expenses > 0 else 0
+
+    score = 0
+    score += min(25, (savings_rate / 30) * 25)
+    score += min(25, (emergency_months / 6) * 25)
+    score += max(0, 25 - (debt_burden / 2))
+    score += min(25, (investment_ratio / 20) * 25)
+
+    return {
+        "score": int(score),
+        "savings_rate": savings_rate,
+        "debt_burden": debt_burden,
+        "investment_ratio": investment_ratio,
+        "emergency_months": emergency_months,
+    }
+
+
+# 4. UI COMPONENTS
+def show_landing_page():
+    st.markdown(
+        """
+        <div style='text-align: center; padding: 50px;'>
+            <h1 style='font-size: 72px; color: #00C851;'>💰 MoneyMitra</h1>
+            <h2 style='color: #555;'>Your AI-Powered Financial Wellness Companion</h2>
+            <p style='font-size: 1.2rem; color: #888;'>Transform your financial future with personalized AI insights, tax planning, and FIRE tracking.</p>
+        </div>
+    """,
+        unsafe_allow_html=True,
+    )
+
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col2:
+        if st.button("🚀 Start Your Financial Assessment", use_container_width=True):
+            st.session_state.show_app = True
+            st.rerun()
+
+    st.divider()
+
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        st.info("📊 **Visual Analytics**\\\nUnderstand your money with interactive radar charts.")
+    with c2:
+        st.success("🤖 **AI Advisor**\\\nGet hyper-personalized advice tailored to your income.")
+    with c3:
+        st.warning("🔥 **FIRE Planner**\\\nPlan your early retirement with precision.")
+
+
+def main_app():
+    st.title("💰 MoneyMitra Dashboard")
+
+    with st.sidebar:
+        st.header("📍 Financial Profile")
+        with st.form("financial_form"):
+            income = st.number_input("Monthly Income (₹)", min_value=0, value=50000, step=1000)
+            expenses = st.number_input("Monthly Expenses (₹)", min_value=0, value=30000, step=1000)
+            savings = st.number_input("Monthly Savings (₹)", min_value=0, value=10000, step=1000)
+            debt = st.number_input("Monthly Debt EMIs (₹)", min_value=0, value=5000, step=500)
+            investments = st.number_input("Monthly Investments (₹)", min_value=0, value=5000, step=500)
+            emergency_fund = st.number_input("Total Emergency Fund (₹)", min_value=0, value=50000, step=5000)
+            age = st.number_input("Age", min_value=18, max_value=100, value=30, step=1)
+
+            submit = st.form_submit_button("Analyze My Finances")
+
+    if submit or "metrics" in st.session_state:
+        metrics = calculate_financial_metrics(income, expenses, savings, debt, investments, emergency_fund)
+        st.session_state.metrics = metrics
+
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("Health Score", f"{metrics['score']}/100")
+        c2.metric("Savings Rate", f"{metrics['savings_rate']:.1f}%")
+        c3.metric("Debt-to-Income", f"{metrics['debt_burden']:.1f}%")
+        c4.metric("Emergency Buffer", f"{metrics['emergency_months']:.1f} Mo")
+
+        tab1, tab2, tab3, tab4 = st.tabs(["📊 Analytics", "🤖 AI Advisor", "🔥 FIRE Planner", "⚖️ Tax Wizard"])
+
+        with tab1:
+            col_a, col_b = st.columns([1, 1])
+            with col_a:
+                st.subheader("Visual Health Radar")
+                categories = ["Savings Rate", "Emergency Fund", "Debt Management", "Investment Ratio"]
+                values = [
+                    min(100, (metrics["savings_rate"] / 30) * 100),
+                    min(100, (metrics["emergency_months"] / 6) * 100),
+                    max(0, 100 - (metrics["debt_burden"] * 2)),
+                    min(100, (metrics["investment_ratio"] / 20) * 100),
+                ]
+
+                fig = go.Figure(
+                    data=go.Scatterpolar(
+                        r=values,
+                        theta=categories,
+                        fill="toself",
+                        line_color="#00C851",
+                    )
+                )
+                fig.update_layout(
+                    polar=dict(radialaxis=dict(visible=True, range=[0, 100])),
+                    showlegend=False,
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+            with col_b:
+                st.subheader("Status Check")
+                if metrics["score"] > 75:
+                    st.success("🌟 Excellent! You are in the top 10% of financial health.")
+                elif metrics["score"] > 50:
+                    st.info("👍 Good progress. A few tweaks will make you financially bulletproof.")
+                else:
+                    st.warning("⚠️ Action Required. Your financial foundation needs strengthening.")
+
+                st.progress(metrics["score"] / 100)
+
+        with tab2:
+            st.subheader("Your Personal AI Financial Advisor")
+            st.markdown("*Powered by Groq (Llama 3)*")
+
+            if st.button("✨ Generate Personalized AI Advice"):
+                with st.spinner("AI is analyzing your numbers..."):
+                    advice = get_claude_advice(
+                        income,
+                        expenses,
+                        savings,
+                        metrics["emergency_months"],
+                        metrics["debt_burden"],
+                        metrics["investment_ratio"],
+                        metrics["score"],
+                        age,
+                    )
+                    st.markdown(f"### 💬 Recommendations\\\n{advice}")
+
+        with tab3:
+            st.subheader("FIRE (Financial Independence, Retire Early)")
+            annual_exp = expenses * 12
+            fire_target = annual_exp * 25
+            current_net_worth = emergency_fund + (investments * 12)
+
+            st.write(f"**Annual Expenses:** ₹{annual_exp:,.0f}")
+            st.write(f"**FIRE Target (25x Rule):** ₹{fire_target:,.0f}")
+
+            years_to_fire = (
+                (fire_target - current_net_worth) / (investments * 12 + savings * 12)
+                if (investments + savings) > 0
+                else 100
+            )
+            st.metric("Estimated Years to FIRE", f"{max(0, int(years_to_fire))} Years")
+
+        with tab4:
+            st.subheader("Smart Tax Wizard (India)")
+            tax_income = income * 12
+            st.info(f"Gross Annual Income: ₹{tax_income:,.0f}")
+            st.write("Current Indian tax laws (FY 2024-25) suggest the New Regime is better for most earners.")
+
+            if tax_income <= 700000:
+                st.success("✅ Your income is under ₹7 Lakhs. Under Section 87A, your effective tax is ₹0!")
+            else:
+                st.info("💡 You are in a taxable bracket. Consider maximizing 80C (₹1.5L) and NPS (₹50k) if using Old Regime.")
+
+
+# 5. SESSION STATE & RUN
+if "show_app" not in st.session_state:
+    st.session_state.show_app = False
+
+if not st.session_state.show_app:
+    show_landing_page()
+else:
+    main_app()
